@@ -9,6 +9,7 @@ from collator import MultimodalCollator
 from torch.utils.data import Dataset, DataLoader, random_split, Subset
 import torch.nn as nn
 from train import train
+from evaluation import test_eval
 
 gc.collect()
 torch.cuda.empty_cache()
@@ -88,3 +89,5 @@ gc.collect()
 torch.cuda.empty_cache()
 
 model, train_loss, val_loss, train_f1, val_f1 = train(model, train_loader, val_loader, optimizer, criterion, num_epochs, lr_scheduler, device)
+
+f1_torchmetric, bleu_l, pred_token_l, pred_word_l = test_eval(val_dataset,model, device, tokenizer)
