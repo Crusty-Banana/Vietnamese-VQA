@@ -2,7 +2,6 @@ import torch.nn as nn
 import torch
 from typing import Optional, Tuple, Union
 from helper import shift_tokens_right
-from main import device
 
 # Build the mVQA model. Some of the codes are modified from the source code of mBART at hugging face.
 class VQAModel2(nn.Module):
