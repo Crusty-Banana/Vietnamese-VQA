@@ -1,7 +1,7 @@
 import torch
 import gc
 from dataset import OPENVIVQA_Dataset
-from helper import visualize_batch
+from helper import visualize_batch, plot_img_test
 from transformers import pipeline, ViTImageProcessor, ViTForImageClassification, ViTModel, AutoTokenizer, MBartModel,MBartForConditionalGeneration
 from transformers import T5Tokenizer, T5Model
 from model import VQAModel2
@@ -90,4 +90,13 @@ torch.cuda.empty_cache()
 
 model, train_loss, val_loss, train_f1, val_f1 = train(model, train_loader, val_loader, optimizer, criterion, num_epochs, lr_scheduler, device)
 
+# Evaluate model
 f1_torchmetric, bleu_l, pred_token_l, pred_word_l = test_eval(val_dataset,model, device, tokenizer)
+
+print("average f1 score: ", sum(f1_torchmetric)/len(f1_torchmetric))
+print("average bleu score: ", sum(bleu_l)/len(bleu_l))
+
+# Visualized model
+answers, answer_tokens, predictions, pred_tokens, f1_tm_lst, bleu_lst = plot_img_test(3,val_dataset, model, device, tokenizer)
+
+answers, answer_tokens, predictions, pred_tokens, f1_tm_lst, bleu_lst = plot_img_test(3,train_dataset, model, device, tokenizer)
