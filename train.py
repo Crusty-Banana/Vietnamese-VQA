@@ -1,12 +1,23 @@
 from tqdm import tqdm
 import torch
 from torchmetrics import F1Score
+import datetime
+import logging
+import os
 
 def train(model, train_loader, val_loader, optimizer, criterion, num_epochs, scheduler, device):
     train_loss = []
     val_loss = []
     train_f1 = []
     val_f1 = []
+
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    folder_name = f"run_{current_time}"
+    os.makedirs(folder_name, exist_ok=True)  # Create folder if it doesn't exist
+
+    log_file = os.path.join(folder_name, f"training_log_{current_time}.log")
+    logging.basicConfig(filename=log_file, level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
     for epoch in range(num_epochs):
         model.train()
         running_train_loss, running_train_f1 = 0, 0
@@ -80,9 +91,17 @@ def train(model, train_loader, val_loader, optimizer, criterion, num_epochs, sch
 
         print("Epoch [{}/{}], Train Loss: {:.4f}, Train F1: {:.4f}, LearningRate: {} ".format(epoch+1, num_epochs, epoch_train_loss, epoch_train_f1, scheduler.get_last_lr()))
         print("Epoch [{}/{}], Val Loss: {:.4f}, Val F1: {:.4f}".format(epoch+1, num_epochs, epoch_val_loss, epoch_val_f1))
+        logging.info(f"Epoch [{epoch+1}/{num_epochs}], Train Loss: {epoch_train_loss:.4f}, Train F1: {epoch_train_f1:.4f}, LearningRate: {scheduler.get_last_lr()} ")
+        logging.info(f"Epoch [{epoch+1}/{num_epochs}], Val Loss: {epoch_val_loss:.4f}, Val F1: {epoch_val_f1:.4f}")
 
+    # Save the trained model within the created folder
+    model_name = os.path.join(folder_name, f"model_{current_time}.pth")
+    torch.save(model.state_dict(), model_name)
         # Save the trained model
         # if (epoch+1) > 0:
         #     torch.save(model.state_dict(), model_outputs + "/ViTmBART_epoch" + str(epoch+19) + ".pth")
+    # current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    # model_name = f"model_{current_time}.pth"
+    # torch.save(model.state_dict(), model_name)
 
     return model, train_loss, val_loss, train_f1, val_f1

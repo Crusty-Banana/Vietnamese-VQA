@@ -66,9 +66,9 @@ val_dataset = OPENVIVQA_Dataset('./vlsp2023_dev_data.json', 'dev-images')
 test_dataset = OPENVIVQA_Dataset('./vlsp2023_test_data.json', 'test-images')
 
 # Get Data Loader
-train_loader = DataLoader(dataset=train_dataset, batch_size=4, shuffle = True, num_workers = 8, collate_fn = collate_fn)
-val_loader = DataLoader(dataset=val_dataset, batch_size=4, shuffle = False, num_workers = 8, collate_fn = collate_fn)
-test_loader = DataLoader(dataset=test_dataset, batch_size=4, shuffle = False, num_workers = 8, collate_fn = collate_fn)
+train_loader = DataLoader(dataset=train_dataset, batch_size=4, shuffle = True, num_workers = 4, collate_fn = collate_fn)
+val_loader = DataLoader(dataset=val_dataset, batch_size=4, shuffle = False, num_workers = 4, collate_fn = collate_fn)
+test_loader = DataLoader(dataset=test_dataset, batch_size=4, shuffle = False, num_workers = 4, collate_fn = collate_fn)
 
 # Setting up training parameters
 num_epochs = 12
@@ -86,6 +86,22 @@ model_outputs = "saved_models"
 
 # Train model 
 gc.collect()
+torch.cuda.empty_cache()
+
+#load old model
+checkpoint_path = '/home/huynh/Vietnamese-VQA/run_2024-01-04_17-09-53/model_2024-01-04_17-09-53.pth'
+
+# Load the checkpoint
+checkpoint = torch.load(checkpoint_path)
+
+# Load the model state dictionary
+model.load_state_dict(checkpoint)
+
+# Load the optimizer state dictionary if available
+if 'optimizer_state_dict' in checkpoint:
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+
+del checkpoint
 torch.cuda.empty_cache()
 
 model, train_loss, val_loss, train_f1, val_f1 = train(model, train_loader, val_loader, optimizer, criterion, num_epochs, lr_scheduler, device)
