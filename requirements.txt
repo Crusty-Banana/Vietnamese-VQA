@@ -1,0 +1,11 @@
+torch
+torchvision
+torchmetrics
+tqdm
+transformers
+nltk
+pandas
+matplotlib
+pytorch_model_summary
+albumentations 
+scikit-image

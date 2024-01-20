@@ -33,7 +33,7 @@ class OPENVIVQA_Dataset(torch.utils.data.Dataset):
             transforms.ToTensor()           # Convert the image to a tensor
         ])
     def __len__(self):
-        return len(self.annotations) 
+        return len(self.annotations)
 
     def __getitem__(self, idx):
         annot = self.annotations.iloc[idx]

@@ -4,30 +4,28 @@ from dataset import OPENVIVQA_Dataset
 from helper import visualize_batch, plot_img_test
 from transformers import pipeline, ViTImageProcessor, ViTForImageClassification, ViTModel, AutoTokenizer, MBartModel,MBartForConditionalGeneration
 from transformers import T5Tokenizer, T5Model
-from model import VQAModel2
+from model import VQAModel
 from collator import MultimodalCollator
 from torch.utils.data import Dataset, DataLoader, random_split, Subset
 import torch.nn as nn
 from train import train
 from evaluation import test_eval
-
-gc.collect()
-torch.cuda.empty_cache()
-
+from pytorch_model_summary import summary
+import zipfile
 from huggingface_hub import snapshot_download
+
 snapshot_download(repo_id='uitnlp/OpenViVQA-dataset', repo_type="dataset",
-                    local_dir=".",
+                    local_dir="data",
                     local_dir_use_symlinks="auto"
                 )
-import zipfile
-with zipfile.ZipFile("train-images.zip","r") as zip_ref:
-    zip_ref.extractall(".")
-with zipfile.ZipFile("dev-images.zip","r") as zip_ref:
-    zip_ref.extractall(".")
-with zipfile.ZipFile("test-images.zip","r") as zip_ref:
-    zip_ref.extractall(".")
+with zipfile.ZipFile("data/train-images.zip","r") as zip_ref:
+    zip_ref.extractall("data")
+with zipfile.ZipFile("data/dev-images.zip","r") as zip_ref:
+    zip_ref.extractall("data")
+with zipfile.ZipFile("data/test-images.zip","r") as zip_ref:
+    zip_ref.extractall("data")
 
-dataset = OPENVIVQA_Dataset('./vlsp2023_dev_data.json', 'dev-images')
+dataset = OPENVIVQA_Dataset('data/vlsp2023_dev_data.json', 'data/dev-images')
 
 # Create a DataLoader
 data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=True)
@@ -41,16 +39,15 @@ for i, batch in enumerate(data_loader):
 
 # Get GPU
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(device)
+print('Using ', device)
 
 # Get models
 image_encoder = ViTModel.from_pretrained('google/vit-base-patch16-224').to(device)
 tokenizer = AutoTokenizer.from_pretrained("facebook/mbart-large-cc25")
 text_model = MBartModel.from_pretrained("facebook/mbart-large-cc25").to(device)
 
-model = VQAModel2(image_encoder, text_model, device).to(device)
+model = VQAModel(image_encoder, text_model, device).to(device)
 
-from pytorch_model_summary import summary
 print(summary(model, torch.zeros((2,60)).long().to(device),
               torch.zeros((2,3,224,224)).to(device),
               torch.zeros((2,60)).long().to(device),
@@ -61,9 +58,9 @@ print(summary(model, torch.zeros((2,60)).long().to(device),
 collate_fn = MultimodalCollator(tokenizer)
 
 # Get Dataset
-train_dataset = OPENVIVQA_Dataset('./vlsp2023_train_data.json', 'training-images')
-val_dataset = OPENVIVQA_Dataset('./vlsp2023_dev_data.json', 'dev-images')
-test_dataset = OPENVIVQA_Dataset('./vlsp2023_test_data.json', 'test-images')
+train_dataset = OPENVIVQA_Dataset('data/vlsp2023_train_data.json', 'data/training-images')
+val_dataset = OPENVIVQA_Dataset('data/vlsp2023_dev_data.json', 'data/dev-images')
+test_dataset = OPENVIVQA_Dataset('data/vlsp2023_test_data.json', 'data/test-images')
 
 # Get Data Loader
 train_loader = DataLoader(dataset=train_dataset, batch_size=4, shuffle = True, num_workers = 4, collate_fn = collate_fn)
@@ -81,28 +78,24 @@ lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
                                                step_size=5,
                                                gamma=0.5)
 
-# Directory to save checkpoints
-model_outputs = "saved_models"
+
+# #load old model
+# checkpoint_path = '/home/huynh/Vietnamese-VQA/run_2024-01-04_17-09-53/model_2024-01-04_17-09-53.pth'
+
+# # Load the checkpoint
+# checkpoint = torch.load(checkpoint_path)
+
+# # Load the model state dictionary
+# model.load_state_dict(checkpoint)
+
+# # Load the optimizer state dictionary if available
+# if 'optimizer_state_dict' in checkpoint:
+#     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+
+# del checkpoint
+# torch.cuda.empty_cache()
 
 # Train model 
-gc.collect()
-torch.cuda.empty_cache()
-
-#load old model
-checkpoint_path = '/home/huynh/Vietnamese-VQA/run_2024-01-04_17-09-53/model_2024-01-04_17-09-53.pth'
-
-# Load the checkpoint
-checkpoint = torch.load(checkpoint_path)
-
-# Load the model state dictionary
-model.load_state_dict(checkpoint)
-
-# Load the optimizer state dictionary if available
-if 'optimizer_state_dict' in checkpoint:
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-
-del checkpoint
-torch.cuda.empty_cache()
 
 model, train_loss, val_loss, train_f1, val_f1 = train(model, train_loader, val_loader, optimizer, criterion, num_epochs, lr_scheduler, device)
 
