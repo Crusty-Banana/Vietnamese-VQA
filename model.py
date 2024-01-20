@@ -4,7 +4,7 @@ from typing import Optional, Tuple, Union
 from helper import shift_tokens_right
 
 # Build the mVQA model. Some of the codes are modified from the source code of mBART at hugging face.
-class VQAModel2(nn.Module):
+class VQAModel(nn.Module):
     """
     The VQAModel should consist of a image encoder and a multilingual language transformer (encoder, decoder, encoder-decoder).
 
@@ -12,7 +12,7 @@ class VQAModel2(nn.Module):
     """
 
     def __init__(self, visualEncoder, textModel, device, vocab_size = 250027, img_hidden_dim = 768, txt_hidden_dim = 1024):
-        super(VQAModel2, self).__init__()
+        super(VQAModel, self).__init__()
         self.visualEncoder = visualEncoder
         self.config = textModel.config
         self.encoder = textModel.encoder

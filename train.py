@@ -1,4 +1,4 @@
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import torch
 from torchmetrics import F1Score
 import datetime
@@ -12,7 +12,7 @@ def train(model, train_loader, val_loader, optimizer, criterion, num_epochs, sch
     val_f1 = []
 
     current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    folder_name = f"run_{current_time}"
+    folder_name = f"run/run_{current_time}"
     os.makedirs(folder_name, exist_ok=True)  # Create folder if it doesn't exist
 
     log_file = os.path.join(folder_name, f"training_log_{current_time}.log")
