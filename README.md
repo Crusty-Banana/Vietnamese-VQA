@@ -1,12 +1,9 @@
 **Dependencies**
   
 ```
-pip install -q transformers
-pip install -q pytorch_model_summary
-pip install -q torchmetrics
-pip install -q pandas
-pip install -q torchvision
-pip install -q matplotlib albumentations scikit-image nltk tqdm
+conda create -n $env python=3.10
+conda activate $env
+pip install -r requirements.txt 
 ```
 
 **How to use**
@@ -15,7 +12,7 @@ Train model:
 ```
 python main.py
 ```
-Test Inference: 
+Inference: 
 ```
-python test_inference.py
+python main.py --action inference --checkpoint_path $path_to_model
 ```
