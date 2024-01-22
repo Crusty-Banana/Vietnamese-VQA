@@ -2,18 +2,23 @@ import matplotlib.pyplot as plt
 import torch
 import numpy as np
 from torchmetrics import F1Score
+import os 
+
 from evaluation import bleu_score
 
 # Function to visualize a batch of data
-def visualize_batch(batch):
+def visualize_batch(batch, save_dir):
     plt.figure(figsize=(12, 4))
     for i in range(len(batch['image'])):
-        ax = plt.subplot(1, len(batch['image']), i + 1)
-        img = batch['image'][i].permute(1, 2, 0)  # Convert from (C, H, W) to (H, W, C)
+        fig = plt.figure(figsize=(12, 4))
+        img = batch['image'][i].permute(1, 2, 0)
         plt.imshow(img)
         plt.title(f"Q: {batch['question'][i]}\nA: {batch['answer'][i]}")
         plt.axis('off')
-    plt.show()
+        # Save each plot as an image file
+        fig.savefig(os.path.join(save_dir, f"batch_image_{i}.png"))
+        plt.close(fig)
+
 
 def shift_tokens_right(input_ids: torch.Tensor, pad_token_id: int):
     """
@@ -37,7 +42,7 @@ def shift_tokens_right(input_ids: torch.Tensor, pad_token_id: int):
 
     return prev_output_tokens
 
-def plot_img_test(no_, dataset, model, device, tokenizer):
+def plot_img_test(no_, dataset, model, device, tokenizer, save_dir):
     images, questions, answers, answer_tokens, predictions, pred_tokens, f1_tm_lst, bleu_lst = [],[],[],[],[],[],[],[]
     random_idx = np.random.choice(len(dataset),no_)
     for i in random_idx:
@@ -73,22 +78,14 @@ def plot_img_test(no_, dataset, model, device, tokenizer):
     print("\n F1 torchmetric",f1_tm_lst)
     print("\n Bleu_score",bleu_lst)
 
-
-    # plt.figure(figsize=(10,6))
-    plt.figure(figsize=(10, 10 * no_))  # Adjust figsize for better display
     for idx in range(no_):
         image = images[idx]
-        plt.subplot(1, no_, idx+1)
+        fig = plt.figure(figsize=(10, 6))
         plt.imshow(image)
-        plt.rcParams.update({'font.size': 8})
-        plt.title('Q: ' + questions[idx] + '\n A: '+ answers[idx] + '\n Pred: '+ predictions[idx] + '\n')
+        plt.title('Q: ' + questions[idx] + '\n A: '+ answers[idx] + '\n Pred: '+ predictions[idx])
         plt.axis('off')
-        plt.subplots_adjust(left=0.1,
-                      bottom=0.1,
-                      right=0.9,
-                      top=0.9,
-                      wspace=1.8,
-                      hspace=1.8)
-    plt.show()
+        # Save each plot as an image file
+        fig.savefig(os.path.join(save_dir, f"test_image_{idx}.png"))
+        plt.close(fig)
 
     return answers, answer_tokens, predictions, pred_tokens, f1_tm_lst, bleu_lst

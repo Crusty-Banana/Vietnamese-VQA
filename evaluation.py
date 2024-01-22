@@ -1,7 +1,6 @@
 from torchmetrics import F1Score
 from nltk.translate import bleu
 from nltk.translate.bleu_score import SmoothingFunction
-smoothie = SmoothingFunction().method4
 import torch
 import string
 
@@ -12,6 +11,8 @@ def bleu_score(reference, candidate):
 
     ref_list = reference.split()
     can_list = candidate.split()
+
+    smoothie = SmoothingFunction().method4
 
     score = bleu([ref_list], can_list,smoothing_function=smoothie, weights = [0.25,0.25,0.25,0.25])
     return score

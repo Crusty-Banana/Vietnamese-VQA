@@ -1,111 +1,130 @@
+import argparse
 import torch
-import gc
+import torch.nn as nn
+from torch.utils.data import DataLoader
+from transformers import ViTModel, AutoTokenizer, MBartModel
+from huggingface_hub import snapshot_download
+import zipfile
+import os
+import datetime
+
 from dataset import OPENVIVQA_Dataset
-from helper import visualize_batch, plot_img_test
-from transformers import pipeline, ViTImageProcessor, ViTForImageClassification, ViTModel, AutoTokenizer, MBartModel,MBartForConditionalGeneration
-from transformers import T5Tokenizer, T5Model
 from model import VQAModel
 from collator import MultimodalCollator
-from torch.utils.data import Dataset, DataLoader, random_split, Subset
-import torch.nn as nn
 from train import train
+from inference import inference
 from evaluation import test_eval
-from pytorch_model_summary import summary
-import zipfile
-from huggingface_hub import snapshot_download
+from helper import visualize_batch, plot_img_test
 
-snapshot_download(repo_id='uitnlp/OpenViVQA-dataset', repo_type="dataset",
-                    local_dir="data",
-                    local_dir_use_symlinks="auto"
-                )
-with zipfile.ZipFile("data/train-images.zip","r") as zip_ref:
-    zip_ref.extractall("data")
-with zipfile.ZipFile("data/dev-images.zip","r") as zip_ref:
-    zip_ref.extractall("data")
-with zipfile.ZipFile("data/test-images.zip","r") as zip_ref:
-    zip_ref.extractall("data")
+def extract_zip_files(data_dir):
+    zip_files = ['train-images.zip', 'dev-images.zip', 'test-images.zip']
+    for file in zip_files:
+        with zipfile.ZipFile(os.path.join(data_dir, file), "r") as zip_ref:
+            zip_ref.extractall(data_dir)
 
-dataset = OPENVIVQA_Dataset('data/vlsp2023_dev_data.json', 'data/dev-images')
+def create_model(device):
+    image_encoder = ViTModel.from_pretrained('google/vit-base-patch16-224').to(device)
+    text_model = MBartModel.from_pretrained("facebook/mbart-large-cc25").to(device)
+    model = VQAModel(image_encoder, text_model, device).to(device)
+    return model
 
-# Create a DataLoader
-data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=True)
+def load_model_from_checkpoint(model, checkpoint_path, optimizer=None):
+    checkpoint = torch.load(checkpoint_path)
+    model.load_state_dict(checkpoint)
 
-# Iterate and visualize the first few batches
-num_batches_to_visualize = 3
-for i, batch in enumerate(data_loader):
-    if i >= num_batches_to_visualize:
-        break
-    visualize_batch(batch)
+    if 'optimizer_state_dict' in checkpoint:
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
-# Get GPU
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print('Using ', device)
+    del checkpoint
+    torch.cuda.empty_cache()
 
-# Get models
-image_encoder = ViTModel.from_pretrained('google/vit-base-patch16-224').to(device)
-tokenizer = AutoTokenizer.from_pretrained("facebook/mbart-large-cc25")
-text_model = MBartModel.from_pretrained("facebook/mbart-large-cc25").to(device)
+    print(f"Model loaded from checkpoint: {checkpoint_path}")
 
-model = VQAModel(image_encoder, text_model, device).to(device)
+def main(args):
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-print(summary(model, torch.zeros((2,60)).long().to(device),
-              torch.zeros((2,3,224,224)).to(device),
-              torch.zeros((2,60)).long().to(device),
-              torch.zeros((2,60)).long().to(device),
-              show_input=True))
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print('Using ', device)
 
-# Get Collator
-collate_fn = MultimodalCollator(tokenizer)
+    # Tokenizer (created only once)
+    tokenizer = AutoTokenizer.from_pretrained("facebook/mbart-large-cc25")
 
-# Get Dataset
-train_dataset = OPENVIVQA_Dataset('data/vlsp2023_train_data.json', 'data/training-images')
-val_dataset = OPENVIVQA_Dataset('data/vlsp2023_dev_data.json', 'data/dev-images')
-test_dataset = OPENVIVQA_Dataset('data/vlsp2023_test_data.json', 'data/test-images')
+    # Check if data needs to be downloaded and extracted
+    required_files = ['train-images.zip', 'dev-images.zip', 'test-images.zip']
+    need_download = not all(os.path.exists(os.path.join(args.data_dir, file)) for file in required_files)
 
-# Get Data Loader
-train_loader = DataLoader(dataset=train_dataset, batch_size=4, shuffle = True, num_workers = 4, collate_fn = collate_fn)
-val_loader = DataLoader(dataset=val_dataset, batch_size=4, shuffle = False, num_workers = 4, collate_fn = collate_fn)
-test_loader = DataLoader(dataset=test_dataset, batch_size=4, shuffle = False, num_workers = 4, collate_fn = collate_fn)
+    if need_download:
+        # Download and extract data
+        snapshot_download(repo_id=args.repo_id, local_dir=args.data_dir, repo_type="dataset", local_dir_use_symlinks="auto")
+        extract_zip_files(args.data_dir)
 
-# Setting up training parameters
-num_epochs = 12
-learning_rate = 1e-5
-scale = 1
-# Define the loss function and optimizer
-criterion = nn.CrossEntropyLoss(ignore_index = -100)
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, betas=(0.9, 0.999), eps=1e-8)
-lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
-                                               step_size=5,
-                                               gamma=0.5)
+    if args.action == 'train':
+        run_dir = f"{args.save_dir}/{current_time}"
+        os.makedirs(run_dir, exist_ok=True)
+
+        # Data Loaders        
+        train_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, 'vlsp2023_train_data.json'), os.path.join(args.data_dir, 'training-images'))
+        val_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, 'vlsp2023_dev_data.json'), os.path.join(args.data_dir, 'dev-images'))
+
+        collate_fn = MultimodalCollator(tokenizer)
+
+        train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, collate_fn=collate_fn)
+        val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, collate_fn=collate_fn)
+
+        # Model
+        model = create_model(device)
+
+        # Training
+        criterion = nn.CrossEntropyLoss(ignore_index=-100)
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+        lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.step_size, gamma=args.gamma)
+
+        if args.checkpoint_path:
+            load_model_from_checkpoint(model, args.checkpoint_path, optimizer=optimizer)
+
+        model, train_loss, val_loss, train_f1, val_f1 = train(model, train_loader, val_loader, optimizer, criterion, args.num_epochs, lr_scheduler, device, run_dir, current_time)
+
+        # Evaluation
+        f1_torchmetric, bleu_l, pred_token_l, pred_word_l = test_eval(val_loader.dataset, model, device, tokenizer)
+        print("average f1 score: ", sum(f1_torchmetric) / len(f1_torchmetric))
+        print("average bleu score: ", sum(bleu_l) / len(bleu_l))
+
+        # Visualization model
+        answers, answer_tokens, predictions, pred_tokens, f1_tm_lst, bleu_lst = plot_img_test(3, train_loader.dataset, model, device, tokenizer, run_dir)
+
+        answers, answer_tokens, predictions, pred_tokens, f1_tm_lst, bleu_lst = plot_img_test(3, val_loader.dataset, model, device, tokenizer, run_dir)
+
+    elif args.action == 'inference':
+
+        if not args.checkpoint_path:
+            raise ValueError("Checkpoint path must be provided for inference action.")            
+
+        os.makedirs(args.inference_dir, exist_ok=True)
+
+        test_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, 'vlsp2023_test_data.json'), os.path.join(args.data_dir, 'test-images'))
+        
+        model = create_model(device)
+        load_model_from_checkpoint(model, args.checkpoint_path)
+        
+        inference(model, test_dataset, tokenizer, args.inference_dir, current_time, device)
 
 
-# #load old model
-# checkpoint_path = '/home/huynh/Vietnamese-VQA/run_2024-01-04_17-09-53/model_2024-01-04_17-09-53.pth'
 
-# # Load the checkpoint
-# checkpoint = torch.load(checkpoint_path)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="VQA Model Training and Evaluation")
 
-# # Load the model state dictionary
-# model.load_state_dict(checkpoint)
+    parser.add_argument('--action', type=str, default='train', choices=['train', 'inference'], help='Action to perform: train or inference')
+    parser.add_argument('--repo_id', type=str, default='uitnlp/OpenViVQA-dataset', help='Huggingface repo ID for dataset')
+    parser.add_argument('--data_dir', type=str, default='data', help='Local directory for dataset')
+    parser.add_argument('--batch_size', type=int, default=4, help='Batch size for data loaders')
+    parser.add_argument('--num_workers', type=int, default=4, help='Number of workers for data loaders')
+    parser.add_argument('--learning_rate', type=float, default=1e-5, help='Learning rate')
+    parser.add_argument('--step_size', type=int, default=5, help='Step size for learning rate scheduler')
+    parser.add_argument('--gamma', type=float, default=0.5, help='Gamma for learning rate scheduler')
+    parser.add_argument('--num_epochs', type=int, default=12, help='Number of epochs for training')
+    parser.add_argument('--checkpoint_path', type=str, default=None, help='Path to the model checkpoint')
+    parser.add_argument('--save_dir', type=str, default='run', help='Directory to save runs and images')
+    parser.add_argument('--inference_dir', type=str, default='inference', help='Directory to save inference name')
 
-# # Load the optimizer state dictionary if available
-# if 'optimizer_state_dict' in checkpoint:
-#     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-
-# del checkpoint
-# torch.cuda.empty_cache()
-
-# Train model 
-
-model, train_loss, val_loss, train_f1, val_f1 = train(model, train_loader, val_loader, optimizer, criterion, num_epochs, lr_scheduler, device)
-
-# Evaluate model
-f1_torchmetric, bleu_l, pred_token_l, pred_word_l = test_eval(val_dataset,model, device, tokenizer)
-
-print("average f1 score: ", sum(f1_torchmetric)/len(f1_torchmetric))
-print("average bleu score: ", sum(bleu_l)/len(bleu_l))
-
-# Visualized model
-answers, answer_tokens, predictions, pred_tokens, f1_tm_lst, bleu_lst = plot_img_test(3,val_dataset, model, device, tokenizer)
-
-answers, answer_tokens, predictions, pred_tokens, f1_tm_lst, bleu_lst = plot_img_test(3,train_dataset, model, device, tokenizer)
+    args = parser.parse_args()
+    main(args)
