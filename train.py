@@ -30,7 +30,7 @@ def train(model, train_loader, val_loader, optimizer, criterion, num_epochs, sch
             outputs = model(input_ids, pixel_values, attention_mask, labels=labels)
             loss = outputs['loss']
 
-            f1 = F1Score(task="multiclass", num_classes=250027, top_k=1, ignore_index=-100).to(device)
+            f1 = F1Score(task="multiclass", num_classes=250027, top_k=1, ignore_index=-1).to(device)
             s = f1(outputs['logits'].argmax(dim=2), labels)
 
             running_train_loss += loss.item()
@@ -69,7 +69,7 @@ def train(model, train_loader, val_loader, optimizer, criterion, num_epochs, sch
                 loss = criterion(lm_logits.view(-1, lm_logits.size(-1)), labels.view(-1))
 
                 # Compute f1_score
-                f1 = F1Score(task="multiclass", num_classes=250027, top_k=1, ignore_index=-100).to(device)
+                f1 = F1Score(task="multiclass", num_classes=250027, top_k=1, ignore_index=-1).to(device)
                 s = f1(lm_logits.argmax(dim=2), labels)
                 running_val_loss += loss.item()
                 running_val_f1 += s.clone().cpu().numpy()

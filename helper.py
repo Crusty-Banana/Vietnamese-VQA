@@ -31,8 +31,8 @@ def shift_tokens_right(input_ids: torch.Tensor, pad_token_id: int):
     if pad_token_id is None:
         raise ValueError("pad_token_id has to be defined.")
 
-    # Replace possible -100 values in labels by `pad_token_id`
-    prev_output_tokens.masked_fill_(prev_output_tokens == -100, pad_token_id)
+    # Replace possible -1 values in labels by `pad_token_id`
+    prev_output_tokens.masked_fill_(prev_output_tokens == -1, pad_token_id)
 
     # Calculate index_of_eos with ensuring 2D shape
     index_of_eos = (prev_output_tokens.ne(pad_token_id).sum(dim=1) - 1).unsqueeze(-1)
@@ -57,7 +57,7 @@ def plot_img_test(no_, dataset, model, device, tokenizer, save_dir):
         attention_mask = question_tok["attention_mask"].to(device)
         answer_tok = tokenizer(answer, max_length = 60, padding='max_length',return_tensors="pt")["input_ids"].to(device)
         answer_tokens.append(answer_tok)
-        answer_tok[answer_tok == 1] = -100
+        answer_tok[answer_tok == 1] = -1
 
         output = model(input_ids, pixel_values = image.unsqueeze(0).to(device), attention_mask = attention_mask)
         logit = output['logits']
@@ -66,8 +66,8 @@ def plot_img_test(no_, dataset, model, device, tokenizer, save_dir):
         pred_word = tokenizer.batch_decode(pred, skip_special_tokens=True)[0]
         predictions.append(pred_word)
 
-        pred[pred == 1] = -100
-        f1 = F1Score(task="multiclass", num_classes=250027, top_k = 1, ignore_index = -100).to(device)
+        pred[pred == 1] = -1
+        f1 = F1Score(task="multiclass", num_classes=250027, top_k = 1, ignore_index = -1).to(device)
         s3 = f1(pred, answer_tok)
         f1_tm_lst.append(s3)
         s2 = bleu_score(answer,pred_word)

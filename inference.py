@@ -28,8 +28,11 @@ def inference(model, dataset, tokenizer, inference_dir, inference_name, device):
             output = model(input_ids, pixel_values=image.unsqueeze(0).to(device), attention_mask=attention_mask)
         logit = output['logits']
         pred = logit.argmax(dim=2)
+        print(pred)
+        print(pred.shape)
         pred_word = tokenizer.batch_decode(pred, skip_special_tokens=True)[0]
-
+        print(pred_word)
+        print()
         predictions[id] = pred_word
 
         # Log the question and its predicted answer

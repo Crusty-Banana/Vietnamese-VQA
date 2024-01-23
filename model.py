@@ -11,12 +11,12 @@ class VQAModel(nn.Module):
     The visual_text_block is a module that integrates the encodings from the images and text.
     """
 
-    def __init__(self, visualEncoder, textModel, device, vocab_size = 250027, img_hidden_dim = 768, txt_hidden_dim = 1024):
+    def __init__(self, image_encoder, text_model, device, vocab_size = 250027, img_hidden_dim = 768, txt_hidden_dim = 1024):
         super(VQAModel, self).__init__()
-        self.visualEncoder = visualEncoder
-        self.config = textModel.config
-        self.encoder = textModel.encoder
-        self.decoder = textModel.decoder
+        self.image_encoder = image_encoder
+        self.config = text_model.config
+        self.encoder = text_model.encoder
+        self.decoder = text_model.decoder
         self.vocab_size = vocab_size
         self.device = device
         # Add a linear layer to change dim of image encoding if img_hidden_dim and txt_hidden_dim do not match.
@@ -26,7 +26,7 @@ class VQAModel(nn.Module):
         # lm_head convert text in hidden state after decoder to logits
         self.lm_head = nn.Linear(txt_hidden_dim, out_features= vocab_size, bias=False) #250027 is the vocab size for mBART
         # Cross entropy loss, ignore padding index.
-        self.loss_fn = nn.CrossEntropyLoss(ignore_index = -100)
+        self.loss_fn = nn.CrossEntropyLoss(ignore_index = -1)
         # Logit bias of mBART
         self.register_buffer("final_logits_bias", torch.zeros((1, vocab_size)))
 
@@ -77,19 +77,22 @@ class VQAModel(nn.Module):
 
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-        if encoder_outputs is None:
+        # Freeze question encoder and vision encoder
+        with torch.no_grad():
+            # Question encoding
             encoder_outputs = self.encoder(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            head_mask=head_mask,
-            inputs_embeds=inputs_embeds,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                head_mask=head_mask,
+                inputs_embeds=inputs_embeds,
+                output_attentions=output_attentions,
+                output_hidden_states=output_hidden_states,
+                return_dict=return_dict,
             )
 
-        # Image encoding
-        image_encoder_outputs = self.visualEncoder(pixel_values)
+            # Image encoding
+            image_encoder_outputs = self.image_encoder(pixel_values)
+
         if self.needConvert:
             image_state = self.dim_change(image_encoder_outputs['last_hidden_state'])
         else:
@@ -119,7 +122,6 @@ class VQAModel(nn.Module):
 
         # The logits of generated answer, in the shape of BatchNumber * hidden_state_size * vocab_size
         lm_logits = self.lm_head(decoder_outputs[0]) + self.final_logits_bias
-
         out = {
                 "logits": lm_logits,
                 "hidden_states": decoder_outputs['last_hidden_state']

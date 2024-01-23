@@ -31,7 +31,7 @@ def test_eval(test_data, model, device, tokenizer):
             input_ids = question_tok["input_ids"].to(device)
             attention_mask = question_tok["attention_mask"].to(device)
             answer_tok = tokenizer(answer, max_length = 60, padding='max_length',return_tensors="pt")['input_ids']
-            answer_tok[answer_tok == 1] = -100
+            answer_tok[answer_tok == 1] = -1
             answer_tok = answer_tok.to(device)
             output = model(input_ids = input_ids, pixel_values = image.unsqueeze(0), attention_mask = attention_mask)
 
@@ -42,7 +42,7 @@ def test_eval(test_data, model, device, tokenizer):
             pred_word_l.append(pred_word)
 
             # F1 score from torch.metric
-            f1 = F1Score(task="multiclass", num_classes=250027, top_k = 1, ignore_index = -100).to(device)
+            f1 = F1Score(task="multiclass", num_classes=250027, top_k = 1, ignore_index = -1).to(device)
             s3 = f1(pred, answer_tok)
             f1_torchmetric.append(s3)
 

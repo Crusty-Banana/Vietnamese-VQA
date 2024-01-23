@@ -29,7 +29,7 @@ class MultimodalCollator:
             return_tensors='pt',
             return_attention_mask=True)
 
-        encoded_text['input_ids'][encoded_text['input_ids'] == 1] = -100
+        encoded_text['input_ids'][encoded_text['input_ids'] == 1] = -1
 
         # Avoid squeezing if batch size is 1
         return {
