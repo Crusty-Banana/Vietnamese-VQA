@@ -64,8 +64,8 @@ def main(args):
         os.makedirs(run_dir, exist_ok=True)
 
         # Data Loaders        
-        train_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, 'vlsp2023_train_data.json'), os.path.join(args.data_dir, 'training-images'))
-        val_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, 'vlsp2023_dev_data.json'), os.path.join(args.data_dir, 'dev-images'))
+        train_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, 'vlsp2023_train_data.json'), os.path.join(args.data_dir, 'training-images'), 'train')
+        val_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, 'vlsp2023_dev_data.json'), os.path.join(args.data_dir, 'dev-images'), 'dev')
 
         collate_fn = MultimodalCollator(tokenizer)
 
@@ -102,7 +102,7 @@ def main(args):
 
         os.makedirs(args.inference_dir, exist_ok=True)
 
-        test_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, 'vlsp2023_test_data.json'), os.path.join(args.data_dir, 'test-images'))
+        test_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, 'vlsp2023_test_data.json'), os.path.join(args.data_dir, 'test-images'), 'test')
         
         model = create_model(device)
         load_model_from_checkpoint(model, args.checkpoint_path)
@@ -116,7 +116,7 @@ def main(args):
 
         os.makedirs(args.validation_dir, exist_ok=True)
 
-        val_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, 'vlsp2023_dev_data.json'), os.path.join(args.data_dir, 'dev-images'))
+        val_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, 'vlsp2023_dev_data.json'), os.path.join(args.data_dir, 'dev-images'), 'dev')
         
         model = create_model(device)
         load_model_from_checkpoint(model, args.checkpoint_path)

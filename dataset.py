@@ -5,13 +5,21 @@ from torchvision import transforms as transforms
 import os
 from PIL import Image
 
+train_ocr = json.load(open('ocr/train_ocr.json'))
+dev_ocr = json.load(open('ocr/dev_ocr.json'))
+test_ocr = json.load(open('ocr/test_ocr.json'))
+easy_ocr = json.load(open('ocr/easyocr.json'))
+test_easy_ocr = json.load(open('ocr/test_easyocr.json'))
+
 class OPENVIVQA_Dataset(torch.utils.data.Dataset):
     """
     Dataset class for the OPENVIVQA dataset.
     """
-    def __init__(self, annotation_file, img_dir):
+    def __init__(self, annotation_file, img_dir, ocr_type):
         with open(annotation_file, encoding='utf-8') as f:
             json_file = json.load(f)
+        # Type of OCR
+        self.ocr_type = ocr_type
 
         # Flatten the annotations into a list of dictionaries
         annotations = [{'id': annot_id, **data} for annot_id, data in json_file['annotations'].items()]
@@ -45,6 +53,16 @@ class OPENVIVQA_Dataset(torch.utils.data.Dataset):
         # Fetching the filename
         img_file = self.img_reference[self.img_reference['image_id'] == image_id]['filename'].iloc[0]
 
+        # Concat OCR
+        ocr_text = None
+        if self.ocr_type == "train":
+            ocr_text = ' ' + train_ocr[image_id]
+        elif self.ocr_type == "dev":
+            ocr_text = ' ' + dev_ocr[image_id]
+        elif self.ocr_type == "test":
+            ocr_text = ' ' + test_ocr[image_id]
+        question = question + ocr_text
+            
         # Load the image
         img_path = os.path.join(self.img_dir, img_file)
         img = Image.open(img_path).convert('RGB')

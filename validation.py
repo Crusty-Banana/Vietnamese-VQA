@@ -33,12 +33,12 @@ def validation(model, dataset, tokenizer, validation_dir, validation_name, devic
         id, image, question, answer, image_id = data['id'], data['image'], data['question'], data['answer'], data['image_id']
 
         # Tokenize the question
-        question_tok = tokenizer(question, max_length=60, padding='max_length', return_tensors="pt", return_attention_mask=True)
+        question_tok = tokenizer(question, max_length=200, padding='max_length', return_tensors="pt", return_attention_mask=True)
         input_ids = question_tok["input_ids"].to(device)
         attention_mask = question_tok["attention_mask"].to(device)
         
         # Tokenize the answer
-        answer_tok = tokenizer(answer, max_length = 60, padding='max_length',return_tensors="pt")["input_ids"].to(device)
+        answer_tok = tokenizer(answer, max_length = 200, padding='max_length',return_tensors="pt")["input_ids"].to(device)
         answer_tok[answer_tok == 1] = -100
 
         # Predict
