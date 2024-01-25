@@ -2001,6 +2001,7 @@ class T5ForConditionalGeneration(T5PreTrainedModel):
         self.device_map = None
 
         self.resize_dim = nn.Linear(768, config.d_model)
+        self.vocab_size = config.vocab_size
         
 
     @add_start_docstrings(PARALLELIZE_DOCSTRING)

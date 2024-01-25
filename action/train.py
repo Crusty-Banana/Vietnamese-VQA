@@ -15,6 +15,8 @@ def train(model, train_loader, val_loader, optimizer, criterion, num_epochs, sch
     log_file = os.path.join(run_dir, f"training_log_{run_name}.log")
     logging.basicConfig(filename=log_file, level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
+    print(f"Total number of parameters in the model: {sum(p.numel() for p in model.parameters())}")
+
     for epoch in range(num_epochs):
         model.train()
         running_train_loss, running_train_f1 = 0, 0
