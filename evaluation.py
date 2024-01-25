@@ -18,6 +18,8 @@ def bleu_score(reference, candidate):
     return score
 
 def test_eval(test_data, model, device, tokenizer):
+    vocab_size = model.vocab_size
+
     f1_torchmetric, bleu_l, pred_token_l, pred_word_l = [],[],[],[]
 
     model.eval()
@@ -42,7 +44,7 @@ def test_eval(test_data, model, device, tokenizer):
             pred_word_l.append(pred_word)
 
             # F1 score from torch.metric
-            f1 = F1Score(task="multiclass", num_classes=250027, top_k = 1, ignore_index = -100).to(device)
+            f1 = F1Score(task="multiclass", num_classes=vocab_size, top_k = 1, ignore_index = -100).to(device)
             s3 = f1(pred, answer_tok)
             f1_torchmetric.append(s3)
 

@@ -33,14 +33,15 @@ class MultimodalCollator:
 
         # Avoid squeezing if batch size is 1
         return {
-            "labels": encoded_text['input_ids']
+            "labels": encoded_text['input_ids'],
+            "decoder_attention_mask": encoded_text['attention_mask']
         }
 
-    def preprocess_images(self, images):
-        # Ensure that images is a tensor
-        images = torch.stack(images) if not isinstance(images, torch.Tensor) else images
+    def preprocess_images(self, img_w):
+        # Ensure that img_w is a tensor
+        img_w = torch.stack(img_w) if not isinstance(img_w, torch.Tensor) else img_w
         return {
-            "pixel_values": images
+            "img_w": img_w
         }
 
     def __call__(self, examples):
@@ -48,14 +49,14 @@ class MultimodalCollator:
         if isinstance(examples, dict):  # Single example
             questions = [examples['question']]
             answers = [examples['answer']]
-            images = [examples['image']]
+            img_w = [examples['img_w']]
         else:  # Batch of examples
             questions = [ex['question'] for ex in examples]
             answers = [ex['answer'] for ex in examples]
-            images = torch.stack([ex['image'] for ex in examples])
+            img_w = torch.stack([ex['img_w'] for ex in examples])
 
         return {
             **self.tokenize_text(questions),
             **self.tokenize_answer(answers),
-            **self.preprocess_images(images)
+            **self.preprocess_images(img_w)
         }

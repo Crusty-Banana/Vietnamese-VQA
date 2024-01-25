@@ -9,3 +9,7 @@ matplotlib
 pytorch_model_summary
 albumentations 
 scikit-image
+accelerate
+sentencepiece
+protobuf
+pyyaml
