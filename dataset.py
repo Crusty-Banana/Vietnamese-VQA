@@ -52,4 +52,5 @@ class OPENVIVQA_Dataset(torch.utils.data.Dataset):
             'question': question,
             'answer': answer,
             'img_w': img_w
+            'image_id': image_id
         }

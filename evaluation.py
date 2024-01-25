@@ -1,11 +1,13 @@
 from torchmetrics import F1Score
 from nltk.translate import bleu
 from nltk.translate.bleu_score import SmoothingFunction
+from pycocoevalcap.cider.cider import Cider
+from rouge import Rouge
 import torch
 import string
 
 def bleu_score(reference, candidate):
-  # ignore punctuations
+    # ignore punctuations
     reference = reference.translate(str.maketrans('', '', string.punctuation))
     candidate = candidate.translate(str.maketrans('', '', string.punctuation))
 
@@ -52,3 +54,31 @@ def test_eval(test_data, model, device, tokenizer):
             s2 = bleu_score(answer,pred_word)
             bleu_l.append(s2)
     return f1_torchmetric, bleu_l, pred_token_l, pred_word_l
+
+def cider_score(predictions, references):
+    # Initialize Cider scorer
+    cider_scorer = Cider()
+
+    # Prepare data in form of dictionary
+    predictions = {idx: [pred] for idx, pred in predictions.items()}
+    references = {idx: [ref] for idx, ref in references.items()}
+
+    # Compute the score
+    (score, _) = cider_scorer.compute_score(references, predictions)
+
+    return score
+
+def rouge_score(predictions, references):
+    # Initialize Cider scorer
+    rouge_scorer = Rouge(metrics=['rouge-l'])
+
+    # Prepare data in form of dictionary
+    predictions = [pred for idx, pred in predictions.items()]
+    references = [ref for idx, ref in references.items()]
+
+    # Compute the score
+    scores = rouge_scorer.get_scores(references, predictions)
+    total_f1 = sum(score['rouge-l']['f'] for score in scores)
+    average_f1 = total_f1 / len(scores)
+
+    return average_f1

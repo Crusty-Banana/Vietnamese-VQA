@@ -15,6 +15,7 @@ from model.mbart import MBartForConditionalGeneration
 from collator import MultimodalCollator
 from train import train
 from inference import inference
+from validation import validation
 from evaluation import test_eval
 from helper import visualize_batch, plot_img_test
 
@@ -117,12 +118,24 @@ def main(args):
         
         inference(model, test_dataset, tokenizer, args.inference_dir, current_time, device)
 
+    elif args.action == 'validation':
 
+        if not args.checkpoint_path:
+            raise ValueError("Checkpoint path must be provided for validation action.")            
+
+        os.makedirs(args.validation_dir, exist_ok=True)
+
+        val_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, 'vlsp2023_dev_data.json'), os.path.join(args.data_dir, 'dev-images'))
+        
+        model = create_model(device)
+        load_model_from_checkpoint(model, args.checkpoint_path)
+        
+        validation(model, val_dataset, tokenizer, args.validation_dir, current_time, device)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="VQA Model Training and Evaluation")
 
-    parser.add_argument('--action', type=str, default='train', choices=['train', 'inference'], help='Action to perform: train or inference')
+    parser.add_argument('--action', type=str, default='train', choices=['train', 'inference', 'validation'], help='Action to perform: train or inference or validation')
     parser.add_argument('--repo_id', type=str, default='uitnlp/OpenViVQA-dataset', help='Huggingface repo ID for dataset')
     parser.add_argument('--data_dir', type=str, default='data', help='Local directory for dataset')
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size for data loaders')
@@ -134,8 +147,9 @@ if __name__ == "__main__":
     parser.add_argument('--checkpoint_path', type=str, default=None, help='Path to the model checkpoint')
     parser.add_argument('--save_dir', type=str, default='run', help='Directory to save runs and images')
     parser.add_argument('--inference_dir', type=str, default='inference', help='Directory to save inference name')
+    parser.add_argument('--validation_dir', type=str, default='validation', help='Directory to save validation name')
     parser.add_argument('--model_type', type=str, default='mt5', choices=['mbart', 'mt5'], help='Type of model to use: mbart or mt5')
     parser.add_argument('--model_name', type=str, default='VietAI/vit5-base', help='Model name for the transformer model')
-
+    
     args = parser.parse_args()
     main(args)
