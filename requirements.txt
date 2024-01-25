@@ -13,3 +13,4 @@ accelerate
 sentencepiece
 protobuf
 pyyaml
+pycocoevalcap
