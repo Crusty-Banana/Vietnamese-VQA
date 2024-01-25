@@ -9,14 +9,10 @@ import os
 import datetime
 import yaml
 
-from dataset import OPENVIVQA_Dataset
-from model.mt5 import T5ForConditionalGeneration
-from model.mbart import MBartForConditionalGeneration
-from collator import MultimodalCollator
-from train import train
-from inference import inference
-from validation import validation
-from evaluation import test_eval
+from dataset import OPENVIVQA_Dataset, MultimodalCollator
+from model import T5ForConditionalGeneration, MBartForConditionalGeneration
+from action import train, inference, validation
+
 from helper import visualize_batch, plot_img_test
 
 def save_config(args, run_dir):
@@ -94,11 +90,6 @@ def main(args):
 
         model, train_loss, val_loss, train_f1, val_f1 = train(model, train_loader, val_loader, optimizer, criterion, args.num_epochs, lr_scheduler, device, run_dir, current_time)
 
-        # Evaluation
-        # f1_torchmetric, bleu_l, pred_token_l, pred_word_l = test_eval(val_loader.dataset, model, device, tokenizer)
-        # print("average f1 score: ", sum(f1_torchmetric) / len(f1_torchmetric))
-        # print("average bleu score: ", sum(bleu_l) / len(bleu_l))
-
         # Visualization model
         # answers, answer_tokens, predictions, pred_tokens, f1_tm_lst, bleu_lst = plot_img_test(3, train_loader.dataset, model, device, tokenizer, run_dir)
 
@@ -125,9 +116,9 @@ def main(args):
 
         os.makedirs(args.validation_dir, exist_ok=True)
 
-        val_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, 'vlsp2023_dev_data.json'), os.path.join(args.data_dir, 'dev-images'))
+        val_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, 'vlsp2023_dev_data.json'), os.path.join(args.data_dir, 'dev-images'), 'google/vit-base-patch16-224-in21k')
         
-        model = create_model(device)
+        model = create_model(args.model_type, args.model_name, device)
         load_model_from_checkpoint(model, args.checkpoint_path)
         
         validation(model, val_dataset, tokenizer, args.validation_dir, current_time, device)
@@ -138,16 +129,18 @@ if __name__ == "__main__":
     parser.add_argument('--action', type=str, default='train', choices=['train', 'inference', 'validation'], help='Action to perform: train or inference or validation')
     parser.add_argument('--repo_id', type=str, default='uitnlp/OpenViVQA-dataset', help='Huggingface repo ID for dataset')
     parser.add_argument('--data_dir', type=str, default='data', help='Local directory for dataset')
+    parser.add_argument('--train_dir', type=str, default='run/train', help='Directory to save training log and model')
+    parser.add_argument('--inference_dir', type=str, default='run/inference', help='Directory to save inference name')
+    parser.add_argument('--validation_dir', type=str, default='run/validation', help='Directory to save validation name')
+
+    parser.add_argument('--checkpoint_path', type=str, default=None, help='Path to the model checkpoint')
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size for data loaders')
     parser.add_argument('--num_workers', type=int, default=12, help='Number of workers for data loaders')
     parser.add_argument('--learning_rate', type=float, default=3e-4, help='Learning rate')
     parser.add_argument('--step_size', type=int, default=5, help='Step size for learning rate scheduler')
     parser.add_argument('--gamma', type=float, default=0.5, help='Gamma for learning rate scheduler')
     parser.add_argument('--num_epochs', type=int, default=12, help='Number of epochs for training')
-    parser.add_argument('--checkpoint_path', type=str, default=None, help='Path to the model checkpoint')
-    parser.add_argument('--save_dir', type=str, default='run', help='Directory to save runs and images')
-    parser.add_argument('--inference_dir', type=str, default='inference', help='Directory to save inference name')
-    parser.add_argument('--validation_dir', type=str, default='validation', help='Directory to save validation name')
+    
     parser.add_argument('--model_type', type=str, default='mt5', choices=['mbart', 'mt5'], help='Type of model to use: mbart or mt5')
     parser.add_argument('--model_name', type=str, default='VietAI/vit5-base', help='Model name for the transformer model')
     
