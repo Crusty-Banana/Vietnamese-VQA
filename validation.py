@@ -10,7 +10,9 @@ from evaluation import bleu_score, cider_score, rouge_score
 def validation(model, dataset, tokenizer, validation_dir, validation_name, device):
     model.eval()  # Set the model to evaluation mode
     predictions = {}
+    predictions_list = []
     references = {}
+    references_list = []
 
     # Configure logging
     log_file_path = os.path.join(validation_dir, f'{validation_name}.log')
@@ -33,12 +35,12 @@ def validation(model, dataset, tokenizer, validation_dir, validation_name, devic
         id, image, question, answer, image_id = data['id'], data['image'], data['question'], data['answer'], data['image_id']
 
         # Tokenize the question
-        question_tok = tokenizer(question, max_length=60, padding='max_length', return_tensors="pt", return_attention_mask=True)
+        question_tok = tokenizer(question, padding='max_length', return_tensors="pt", return_attention_mask=True)
         input_ids = question_tok["input_ids"].to(device)
         attention_mask = question_tok["attention_mask"].to(device)
         
         # Tokenize the answer
-        answer_tok = tokenizer(answer, max_length = 60, padding='max_length',return_tensors="pt")["input_ids"].to(device)
+        answer_tok = tokenizer(answer, padding='max_length',return_tensors="pt")["input_ids"].to(device)
         answer_tok[answer_tok == 1] = -100
 
         # Predict
@@ -51,6 +53,8 @@ def validation(model, dataset, tokenizer, validation_dir, validation_name, devic
         # Save predictions and corressponding reference
         predictions[id] = pred_word
         references[id] = answer
+        predictions_list.append(pred_word)
+        references_list.append(answer)
 
         # Evaluation Score
         bleu = bleu_score(pred_word, answer)
@@ -59,7 +63,7 @@ def validation(model, dataset, tokenizer, validation_dir, validation_name, devic
         # Cummulative Score
         sum_bleu_score += bleu
         sum_f1_score += f1_score
-        if (int(image_id) < 3034):
+        if (int(image_id) < 3303):
             sum_text_bleu += bleu
             count_text += 1
             logger.info("This is a text image")
@@ -77,10 +81,9 @@ def validation(model, dataset, tokenizer, validation_dir, validation_name, devic
         logger.info(f"----------------------------------------------\n")
         
 
-    print(sum_bleu_score, sum_f1_score, sum_text_bleu, sum_non_text_bleu)
     logger.info(f"Average F1: {sum_f1_score/len(dataset)}")
     logger.info(f"Average Cider: {cider_score(predictions, references)}")
-    logger.info(f"Average Rouge-L: {rouge_score(predictions, references)}")
+    logger.info(f"Average Rouge-L: {rouge_score(predictions_list, references_list)}")
     logger.info(f"Average BLEU: {sum_bleu_score/len(dataset)}\n")
     logger.info(f"Average BLEU for text images: {sum_text_bleu/count_text}")
     logger.info(f"Average BLEU for non-text images: {sum_non_text_bleu/count_non_text}")

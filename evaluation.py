@@ -70,12 +70,8 @@ def rouge_score(predictions, references):
     # Initialize Cider scorer
     rouge_scorer = Rouge(metrics=['rouge-l'])
 
-    # Prepare data in form of dictionary
-    predictions = [pred for idx, pred in predictions.items()]
-    references = [ref for idx, ref in references.items()]
-
     # Compute the score
-    scores = rouge_scorer.get_scores(references, predictions)
+    scores = rouge_scorer.get_scores(predictions, references)
     total_f1 = sum(score['rouge-l']['f'] for score in scores)
     average_f1 = total_f1 / len(scores)
 
