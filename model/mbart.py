@@ -1372,8 +1372,10 @@ class MBartModel(MBartPreTrainedModel):
         img_hidden_dim = 768
 
         if config.d_model != img_hidden_dim:
-            self.needConvert = True
+            self.need_convert = True
             self.dim_change = nn.Linear(img_hidden_dim, config.d_model)
+        else:
+            self.need_convert = False
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -1453,7 +1455,7 @@ class MBartModel(MBartPreTrainedModel):
                 attentions=encoder_outputs[2] if len(encoder_outputs) > 2 else None,
             )
 
-        if self.needConvert:
+        if self.need_convert:
             image_state = self.dim_change(img_w)
         else:
             image_state = img_w

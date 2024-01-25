@@ -1999,8 +1999,15 @@ class T5ForConditionalGeneration(T5PreTrainedModel):
         # Model parallel
         self.model_parallel = False
         self.device_map = None
+        
+        img_hidden_dim = 768
 
-        self.resize_dim = nn.Linear(768, config.d_model)
+        if config.d_model != img_hidden_dim:
+            self.need_convert = True
+            self.dim_change = nn.Linear(img_hidden_dim, config.d_model)
+        else:
+            self.need_convert = False
+
         self.vocab_size = config.vocab_size
         
 
@@ -2161,7 +2168,8 @@ class T5ForConditionalGeneration(T5PreTrainedModel):
             if decoder_attention_mask is not None:
                 decoder_attention_mask = decoder_attention_mask.to(self.decoder.first_device)
         
-        img_w = self.resize_dim(img_w)
+        if self.need_convert:
+            img_w = self.resize_dim(img_w)
 
         # Decode
         hidden_states = torch.cat([img_w, hidden_states], axis = -2).to('cuda') #batch_size x (196+seq_len) x d_model
