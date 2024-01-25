@@ -5,11 +5,13 @@ from torchvision import transforms as transforms
 import os
 from PIL import Image
 
+from dataset.image_encoder import encode_images
+
 class OPENVIVQA_Dataset(torch.utils.data.Dataset):
     """
     Dataset class for the OPENVIVQA dataset.
     """
-    def __init__(self, annotation_file, img_dir):
+    def __init__(self, annotation_file, img_dir, image_encode_model_name):
         with open(annotation_file, encoding='utf-8') as f:
             json_file = json.load(f)
 
@@ -26,12 +28,8 @@ class OPENVIVQA_Dataset(torch.utils.data.Dataset):
 
         # Convert image_id in img_reference to the same type as in annotations
         self.img_reference['image_id'] = self.img_reference['image_id'].astype(str)
+        self.img_w = encode_images(img_dir, image_encode_model_name)
 
-        self.img_dir = img_dir
-        self.transform = transforms.Compose([
-            transforms.Resize((224, 224)),  # Resize the image to 224x224 pixels
-            transforms.ToTensor()           # Convert the image to a tensor
-        ])
     def __len__(self):
         return len(self.annotations)
 
@@ -46,15 +44,13 @@ class OPENVIVQA_Dataset(torch.utils.data.Dataset):
         img_file = self.img_reference[self.img_reference['image_id'] == image_id]['filename'].iloc[0]
 
         # Load the image
-        img_path = os.path.join(self.img_dir, img_file)
-        img = Image.open(img_path).convert('RGB')
 
-        img = self.transform(img)
+        img_w = self.img_w[img_file]
 
         return {
             'id': annot_id,
             'question': question,
             'answer': answer,
-            'image': img,
+            'img_w': img_w,
             'image_id': image_id
         }
