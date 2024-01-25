@@ -64,7 +64,7 @@ def main(args):
         extract_zip_files(args.data_dir)
 
     if args.action == 'train':
-        run_dir = f"{args.save_dir}/{current_time}"
+        run_dir = f"{args.train_dir}/{current_time}"
         os.makedirs(run_dir, exist_ok=True)
         save_config(args, run_dir)
 
