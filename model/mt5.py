@@ -2004,7 +2004,7 @@ class T5ForConditionalGeneration(T5PreTrainedModel):
 
         if config.d_model != img_hidden_dim:
             self.need_convert = True
-            self.dim_change = nn.Linear(img_hidden_dim, config.d_model)
+            self.resize_dim = nn.Linear(img_hidden_dim, config.d_model)
         else:
             self.need_convert = False
 

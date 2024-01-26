@@ -5,7 +5,7 @@ import os
 from tqdm import tqdm
 from metrics import bleu_score, cider_score, rouge_score, meteor_score
 
-def validation(model, dataset, tokenizer, validation_dir, validation_name, device, batch_size=64):
+def validation(model, dataset, tokenizer, validation_dir, validation_name, device, batch_size=64, num_beams=1):
     model.eval()  # Set the model to evaluation mode
 
     # Logging setup
@@ -43,10 +43,18 @@ def validation(model, dataset, tokenizer, validation_dir, validation_name, devic
 
         # Model prediction
         with torch.no_grad():
-            outputs = model(input_ids, img_w=img_ws, attention_mask=attention_masks)
-        logits = outputs.logits
-        preds = logits.argmax(dim=2)
+            preds = model.generate(
+                img_w=img_ws,
+                input_ids=input_ids,
+                attention_mask=attention_masks,
+                num_beams=1,  # Set num_beams to 1 for greedy decoding
+                max_length=60,
+                return_dict_in_generate=True,
+                output_attentions=True,
+                no_repeat_ngram_size=2
+            ).sequences
 
+        
         # Decode predictions
         pred_words = [tokenizer.decode(pred, skip_special_tokens=True) for pred in preds]
 
