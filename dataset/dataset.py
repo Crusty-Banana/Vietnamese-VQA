@@ -11,7 +11,7 @@ class OPENVIVQA_Dataset(torch.utils.data.Dataset):
     """
     Dataset class for the OPENVIVQA dataset.
     """
-    def __init__(self, annotation_file, img_dir, image_encode_model_name):
+    def __init__(self, annotation_file, img_dir, image_encode_model_name, include_ocr=False):
         with open(annotation_file, encoding='utf-8') as f:
             json_file = json.load(f)
 
@@ -30,6 +30,11 @@ class OPENVIVQA_Dataset(torch.utils.data.Dataset):
         self.img_reference['image_id'] = self.img_reference['image_id'].astype(str)
         self.img_w = encode_images(img_dir, image_encode_model_name)
 
+        # Add whether to include ocr
+        self.include_ocr = include_ocr
+        if include_ocr:
+            self.ocr = json.load(open('ocr/ocr.json'))
+
     def __len__(self):
         return len(self.annotations)
 
@@ -44,9 +49,12 @@ class OPENVIVQA_Dataset(torch.utils.data.Dataset):
         img_file = self.img_reference[self.img_reference['image_id'] == image_id]['filename'].iloc[0]
 
         # Load the image
-
         img_w = self.img_w[img_file]
 
+        # Load the ocr
+        if self.include_ocr == True:
+            question = question + ' ' + self.ocr[image_id]
+            
         return {
             'id': annot_id,
             'question': question,
