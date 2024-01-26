@@ -47,7 +47,7 @@ def validation(model, dataset, tokenizer, validation_dir, validation_name, devic
                 img_w=img_ws,
                 input_ids=input_ids,
                 attention_mask=attention_masks,
-                num_beams=1,  # Set num_beams to 1 for greedy decoding
+                num_beams=num_beams,  # Set num_beams to 1 for greedy decoding
                 max_length=60,
                 return_dict_in_generate=True,
                 output_attentions=True,
@@ -107,11 +107,11 @@ def validation(model, dataset, tokenizer, validation_dir, validation_name, devic
             logger.info(f"{metric}: {value}")
 
     # Save predictions
-    file_path = os.path.join(validation_dir, f'predictions_{validation_name}.json')
-    with open(file_path, 'w') as file:
-        json.dump({"all": all_predictions, "text": text_predictions, "non_text": non_text_predictions}, file)
+    # file_path = os.path.join(validation_dir, f'predictions_{validation_name}.json')
+    # with open(file_path, 'w') as file:
+    #     json.dump({"all": all_predictions, "text": text_predictions, "non_text": non_text_predictions}, file)
 
-    print(f"Predictions and scores exported to {file_path}")
+    # print(f"Predictions and scores exported to {file_path}")
     print(f"Log file created at {log_file_path}")
 
 # Call this function with appropriate parameters

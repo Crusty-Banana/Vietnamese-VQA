@@ -129,7 +129,7 @@ def main(args):
         model = create_model(args.model_type, args.model_name, device)
         load_model_from_checkpoint(model, args.checkpoint_path)
         
-        inference(model, test_dataset, tokenizer, args.inference_dir, current_time, device)
+        inference(model, test_dataset, tokenizer, args.inference_dir, current_time, device, args.batch_size)
 
     elif args.action == 'validation':
 
@@ -143,7 +143,7 @@ def main(args):
         model = create_model(args.model_type, args.model_name, device)
         load_model_from_checkpoint(model, args.checkpoint_path)
         
-        validation(model, val_dataset, tokenizer, args.validation_dir, current_time, device, args.num_beams, args.batch_size)
+        validation(model, val_dataset, tokenizer, args.validation_dir, current_time, device, args.batch_size, args.num_beams)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="VQA Model Training and Evaluation")
@@ -168,7 +168,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--use_cleaned_dataset', action='store_true', help='Use the cleaned-up dataset')
 
-    parser.add_argument('--use_ocr', type=bool, default=False, help='Concat ocr to the end of question')
+    parser.add_argument('--use_ocr', action='store_true', help='Concat ocr to the end of question')
     
     parser.add_argument('--num_beams', type=int, default=1, help='Number of beams for beam search validation')
 

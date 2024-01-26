@@ -47,7 +47,7 @@ def inference(model, dataset, tokenizer, inference_dir, inference_name, device, 
                 max_length=60,
                 return_dict_in_generate=True, 
                 output_attentions=True,
-                num_beams=7,
+                num_beams=8,
                 no_repeat_ngram_size=2)
 
         with tokenizer.as_target_tokenizer():
