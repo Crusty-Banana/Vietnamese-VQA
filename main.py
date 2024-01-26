@@ -91,8 +91,8 @@ def main(args):
         save_config(args, run_dir)
 
         # Data Loaders        
-        train_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, train_data_file), os.path.join(args.data_dir, 'training-images'), 'google/vit-base-patch16-224-in21k')
-        val_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, dev_data_file), os.path.join(args.data_dir, 'dev-images'), 'google/vit-base-patch16-224-in21k')
+        train_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, train_data_file), os.path.join(args.data_dir, 'training-images'), 'google/vit-base-patch16-224-in21k', args.use_ocr)
+        val_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, dev_data_file), os.path.join(args.data_dir, 'dev-images'), 'google/vit-base-patch16-224-in21k', args.use_ocr)
 
         collate_fn = MultimodalCollator(tokenizer)
 
@@ -124,7 +124,7 @@ def main(args):
 
         os.makedirs(args.inference_dir, exist_ok=True)
 
-        test_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, test_data_file), os.path.join(args.data_dir, 'test-images'), 'google/vit-base-patch16-224-in21k')
+        test_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, test_data_file), os.path.join(args.data_dir, 'test-images'), 'google/vit-base-patch16-224-in21k', args.use_ocr)
         
         model = create_model(args.model_type, args.model_name, device)
         load_model_from_checkpoint(model, args.checkpoint_path)
@@ -138,7 +138,7 @@ def main(args):
 
         os.makedirs(args.validation_dir, exist_ok=True)
 
-        val_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, dev_data_file), os.path.join(args.data_dir, 'dev-images'), 'google/vit-base-patch16-224-in21k')
+        val_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, dev_data_file), os.path.join(args.data_dir, 'dev-images'), 'google/vit-base-patch16-224-in21k', args.use_ocr)
         
         model = create_model(args.model_type, args.model_name, device)
         load_model_from_checkpoint(model, args.checkpoint_path)
@@ -168,6 +168,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--use_cleaned_dataset', action='store_true', help='Use the cleaned-up dataset')
 
+    parser.add_argument('--use_ocr', type=bool, default=False, help='Concat ocr to the end of question')
 
     args = parser.parse_args()
     main(args)
