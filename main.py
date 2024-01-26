@@ -8,6 +8,7 @@ import zipfile
 import os
 import datetime
 import yaml
+import gdown
 
 from dataset import OPENVIVQA_Dataset, MultimodalCollator
 from model import T5ForConditionalGeneration, MBartForConditionalGeneration
@@ -18,6 +19,11 @@ from helper import visualize_batch, plot_img_test
 def save_config(args, run_dir):
     with open(f'{run_dir}/config.yaml', 'w') as file:
         yaml.dump(vars(args), file)
+
+
+def download_from_drive(file_id, output_path):
+    url = f'https://drive.google.com/uc?id={file_id}'
+    gdown.download(url, output_path, quiet=False)
 
 def extract_zip_files(data_dir):
     zip_files = ['train-images.zip', 'dev-images.zip', 'test-images.zip']
@@ -50,10 +56,6 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('Using ', device)
 
-    # Tokenizer
-    # tokenizer = AutoTokenizer.from_pretrained("vinai/bartpho-word")
-    tokenizer = AutoTokenizer.from_pretrained(args.model_name)
-    
     # Check if data needs to be downloaded and extracted
     required_files = ['train-images.zip', 'dev-images.zip', 'test-images.zip']
     need_download = not all(os.path.exists(os.path.join(args.data_dir, file)) for file in required_files)
@@ -63,14 +65,34 @@ def main(args):
         snapshot_download(repo_id=args.repo_id, local_dir=args.data_dir, repo_type="dataset", local_dir_use_symlinks="auto")
         extract_zip_files(args.data_dir)
 
+    # Check and download additional files from Google Drive if not present
+    google_drive_files = {
+        '1b_oRS_tE9feJO_5voS4eiIZc48jzoJqU': 'vlsp2023_dev_data_new.json',
+        '1xm3Syc_RoEiXW6Rx7Q_bXpERf5pg-g5j': 'vlsp2023_train_data_new.json'
+    }
+
+    for file_id, file_name in google_drive_files.items():
+        file_path = os.path.join(args.data_dir, file_name)
+        if not os.path.exists(file_path):
+            print(f"Downloading {file_name} from Google Drive...")
+            download_from_drive(file_id, file_path)
+
+    # Choose dataset files based on the use_cleaned_dataset argument
+    train_data_file = 'vlsp2023_train_data_new.json' if args.use_cleaned_dataset else 'vlsp2023_train_data.json'
+    dev_data_file = 'vlsp2023_dev_data_new.json' if args.use_cleaned_dataset else 'vlsp2023_dev_data.json'
+    test_data_file = 'vlsp2023_test_data.json'
+    # Tokenizer
+    # tokenizer = AutoTokenizer.from_pretrained("vinai/bartpho-word")
+    tokenizer = AutoTokenizer.from_pretrained(args.model_name)
+    
     if args.action == 'train':
         run_dir = f"{args.train_dir}/{current_time}"
         os.makedirs(run_dir, exist_ok=True)
         save_config(args, run_dir)
 
         # Data Loaders        
-        train_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, 'vlsp2023_train_data.json'), os.path.join(args.data_dir, 'training-images'), 'google/vit-base-patch16-224-in21k')
-        val_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, 'vlsp2023_dev_data.json'), os.path.join(args.data_dir, 'dev-images'), 'google/vit-base-patch16-224-in21k')
+        train_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, train_data_file), os.path.join(args.data_dir, 'training-images'), 'google/vit-base-patch16-224-in21k')
+        val_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, dev_data_file), os.path.join(args.data_dir, 'dev-images'), 'google/vit-base-patch16-224-in21k')
 
         collate_fn = MultimodalCollator(tokenizer)
 
@@ -102,7 +124,7 @@ def main(args):
 
         os.makedirs(args.inference_dir, exist_ok=True)
 
-        test_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, 'vlsp2023_test_data.json'), os.path.join(args.data_dir, 'test-images'), 'google/vit-base-patch16-224-in21k')
+        test_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, test_data_file), os.path.join(args.data_dir, 'test-images'), 'google/vit-base-patch16-224-in21k')
         
         model = create_model(args.model_type, args.model_name, device)
         load_model_from_checkpoint(model, args.checkpoint_path)
@@ -116,7 +138,7 @@ def main(args):
 
         os.makedirs(args.validation_dir, exist_ok=True)
 
-        val_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, 'vlsp2023_dev_data.json'), os.path.join(args.data_dir, 'dev-images'), 'google/vit-base-patch16-224-in21k')
+        val_dataset = OPENVIVQA_Dataset(os.path.join(args.data_dir, dev_data_file), os.path.join(args.data_dir, 'dev-images'), 'google/vit-base-patch16-224-in21k')
         
         model = create_model(args.model_type, args.model_name, device)
         load_model_from_checkpoint(model, args.checkpoint_path)
@@ -143,6 +165,9 @@ if __name__ == "__main__":
     
     parser.add_argument('--model_type', type=str, default='mt5', choices=['mbart', 'mt5'], help='Type of model to use: mbart or mt5')
     parser.add_argument('--model_name', type=str, default='VietAI/vit5-base', help='Model name for the transformer model')
-    
+
+    parser.add_argument('--use_cleaned_dataset', action='store_true', help='Use the cleaned-up dataset')
+
+
     args = parser.parse_args()
     main(args)
